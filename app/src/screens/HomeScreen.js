@@ -1,26 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image, LayoutAnimation } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MapPin, Bell, Star, Stethoscope, ChevronRight } from 'lucide-react-native';
+import { Search, MapPin, Bell } from 'lucide-react-native';
 import { findSpecialist } from '../utils/symptomMatcher';
 
-const CATEGORIES = [
-    { id: 1, name: 'General', icon: '🌡️' },
-    { id: 2, name: 'Skin', icon: '🧴' },
-    { id: 3, name: 'Dentist', icon: '🦷' },
-    { id: 4, name: 'Heart', icon: '❤️' },
-    { id: 5, name: 'Eye', icon: '👁️' },
-    { id: 6, name: 'Ortho', icon: '🦴' },
-];
-
-// Mock Database of Doctors
-const DOCTORS = [
-    { id: 1, name: 'Dr. Aditi Sharma', spec: 'Dentist', rating: 4.8, exp: '7 yrs', fee: '₹300' },
-    { id: 2, name: 'Dr. Rahul Verma', spec: 'Cardiologist', rating: 4.9, exp: '12 yrs', fee: '₹800' },
-    { id: 3, name: 'Dr. Priya Singh', spec: 'General Physician', rating: 4.5, exp: '5 yrs', fee: '₹200' },
-    { id: 4, name: 'Dr. Amit Patel', spec: 'Gastroenterologist', rating: 4.7, exp: '8 yrs', fee: '₹600' },
-    { id: 5, name: 'Dr. Neaha Gupta', spec: 'Dermatologist', rating: 4.6, exp: '6 yrs', fee: '₹500' },
-];
+// Imports from new structure
+import { CATEGORIES, DOCTORS } from '../constants/data';
+import { COLORS, SPACING } from '../constants/theme';
+import DoctorCard from '../components/DoctorCard';
 
 export default function HomeScreen({ navigation }) {
     const [searchText, setSearchText] = useState('');
@@ -31,24 +18,20 @@ export default function HomeScreen({ navigation }) {
     const handleSearch = (text) => {
         setSearchText(text);
 
-        // 1. If text is empty, reset everything
         if (text.length === 0) {
             setAiResult(null);
             setFilteredDoctors(DOCTORS);
             return;
         }
 
-        // 2. Run AI Logic (Symptom Matcher)
         const result = findSpecialist(text);
 
         if (result.match) {
             setAiResult(result);
-            // 3. Filter Doctors based on AI prediction
             const relevantDoctors = DOCTORS.filter(doc => doc.spec === result.specialist);
             setFilteredDoctors(relevantDoctors);
         } else {
             setAiResult(null);
-            // If no AI match, maybe filter by name (keyword search) fallback
             const keywordMatches = DOCTORS.filter(doc =>
                 doc.name.toLowerCase().includes(text.toLowerCase()) ||
                 doc.spec.toLowerCase().includes(text.toLowerCase())
@@ -65,12 +48,12 @@ export default function HomeScreen({ navigation }) {
                     <View>
                         <Text style={styles.greeting}>Hello, Shashank 👋</Text>
                         <View style={styles.locationContainer}>
-                            <MapPin size={14} color="#666" />
+                            <MapPin size={14} color={COLORS.textSecondary} />
                             <Text style={styles.location}>New Delhi, India</Text>
                         </View>
                     </View>
                     <TouchableOpacity style={styles.bellButton}>
-                        <Bell size={24} color="#333" />
+                        <Bell size={24} color={COLORS.text} />
                         <View style={styles.badge} />
                     </TouchableOpacity>
                 </View>
@@ -89,7 +72,7 @@ export default function HomeScreen({ navigation }) {
                     </View>
                 </View>
 
-                {/* AI RESULT CARD (Appears when match found) */}
+                {/* AI RESULT CARD */}
                 {aiResult && (
                     <View style={styles.aiResultCard}>
                         <View style={styles.aiHeader}>
@@ -134,23 +117,11 @@ export default function HomeScreen({ navigation }) {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorList}>
                         {filteredDoctors.length > 0 ? (
                             filteredDoctors.map((doc) => (
-                                <TouchableOpacity
+                                <DoctorCard
                                     key={doc.id}
-                                    style={styles.doctorCard}
+                                    doctor={doc}
                                     onPress={() => navigation.navigate('DoctorProfile', { doctor: doc })}
-                                >
-                                    <View style={styles.doctorImagePlaceholder} />
-                                    <View style={styles.doctorInfo}>
-                                        <Text style={styles.doctorName}>{doc.name}</Text>
-                                        <Text style={styles.doctorSpec}>{doc.spec}</Text>
-                                        <View style={styles.ratingContainer}>
-                                            <Star size={12} color="#FFD700" fill="#FFD700" />
-                                            <Text style={styles.rating}>{doc.rating}</Text>
-                                            <Text style={styles.reviews}>• {doc.exp} exp</Text>
-                                        </View>
-                                        <Text style={styles.fee}>{doc.fee}</Text>
-                                    </View>
-                                </TouchableOpacity>
+                                />
                             ))
                         ) : (
                             <Text style={styles.noResult}>No doctors found for this issue.</Text>
@@ -165,19 +136,19 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FAFAFA',
-        padding: 16,
+        backgroundColor: COLORS.background,
+        padding: SPACING.m,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: SPACING.l,
     },
     greeting: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
+        color: COLORS.text,
     },
     locationContainer: {
         flexDirection: 'row',
@@ -186,16 +157,16 @@ const styles = StyleSheet.create({
     },
     location: {
         fontSize: 14,
-        color: '#666',
+        color: COLORS.textSecondary,
         marginLeft: 4,
     },
     bellButton: {
         position: 'relative',
-        padding: 8,
-        backgroundColor: '#FFF',
+        padding: SPACING.s,
+        backgroundColor: COLORS.white,
         borderRadius: 12,
         elevation: 2,
-        shadowColor: '#000',
+        shadowColor: COLORS.cardShadow,
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
@@ -206,29 +177,29 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: 'red',
+        backgroundColor: COLORS.error,
         borderWidth: 1,
-        borderColor: '#FFF',
+        borderColor: COLORS.white,
     },
     searchContainer: {
-        marginBottom: 24,
+        marginBottom: SPACING.l,
     },
     searchTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#1a1a1a',
-        marginBottom: 16,
+        color: COLORS.text,
+        marginBottom: SPACING.m,
         width: '70%',
     },
     searchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF',
+        backgroundColor: COLORS.white,
         borderRadius: 16,
-        paddingHorizontal: 16,
+        paddingHorizontal: SPACING.m,
         height: 56,
         elevation: 2,
-        shadowColor: '#000',
+        shadowColor: COLORS.cardShadow,
         shadowOpacity: 0.05,
         shadowRadius: 8,
     },
@@ -236,14 +207,13 @@ const styles = StyleSheet.create({
         flex: 1,
         marginLeft: 12,
         fontSize: 16,
+        color: COLORS.text,
     },
-
-    // AI CARD STYLES
     aiResultCard: {
         backgroundColor: '#E3F2FD',
         borderRadius: 16,
-        padding: 16,
-        marginBottom: 24,
+        padding: SPACING.m,
+        marginBottom: SPACING.l,
         borderWidth: 1,
         borderColor: '#90CAF9',
     },
@@ -256,7 +226,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#FFF',
+        backgroundColor: COLORS.white,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -277,24 +247,23 @@ const styles = StyleSheet.create({
         color: '#546E7A',
         marginTop: 4,
     },
-
     section: {
-        marginBottom: 24,
+        marginBottom: SPACING.l,
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: SPACING.m,
     },
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: COLORS.text,
         marginBottom: 12,
     },
     seeAll: {
-        color: '#007AFF',
+        color: COLORS.primary,
         fontWeight: '600',
     },
     categoriesGrid: {
@@ -304,9 +273,9 @@ const styles = StyleSheet.create({
     },
     categoryCard: {
         width: '30%',
-        backgroundColor: '#FFF',
+        backgroundColor: COLORS.white,
         borderRadius: 16,
-        padding: 12,
+        padding: SPACING.s + 4,
         alignItems: 'center',
         marginBottom: 12,
         elevation: 1,
@@ -317,70 +286,15 @@ const styles = StyleSheet.create({
     },
     categoryName: {
         fontSize: 12,
-        color: '#333',
+        color: COLORS.text,
         fontWeight: '500',
     },
     doctorList: {
         marginLeft: -4,
     },
-    doctorCard: {
-        width: 160,
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 12,
-        marginRight: 16,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        marginLeft: 4,
-        marginBottom: 4, // for shadow
-    },
-    doctorImagePlaceholder: {
-        width: '100%',
-        height: 100,
-        backgroundColor: '#E3F2FD',
-        borderRadius: 12,
-        marginBottom: 12,
-    },
-    doctorInfo: {
-        alignItems: 'flex-start',
-    },
-    doctorName: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 2,
-    },
-    doctorSpec: {
-        fontSize: 12,
-        color: '#666',
-        marginBottom: 6,
-    },
-    ratingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    rating: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#333',
-        marginLeft: 4,
-    },
-    reviews: {
-        fontSize: 12,
-        color: '#999',
-        marginLeft: 4,
-    },
-    fee: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#007AFF',
-    },
     noResult: {
         fontSize: 14,
-        color: '#999',
+        color: COLORS.textSecondary,
         fontStyle: 'italic',
         padding: 16,
     }

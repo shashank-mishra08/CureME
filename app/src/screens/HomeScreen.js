@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MapPin, Bell, Star } from 'lucide-react-native';
+import { Search, MapPin, Bell, Star, Stethoscope, ChevronRight } from 'lucide-react-native';
+import { findSpecialist } from '../utils/symptomMatcher';
 
 const CATEGORIES = [
     { id: 1, name: 'General', icon: '🌡️' },
@@ -12,14 +13,49 @@ const CATEGORIES = [
     { id: 6, name: 'Ortho', icon: '🦴' },
 ];
 
+// Mock Database of Doctors
 const DOCTORS = [
     { id: 1, name: 'Dr. Aditi Sharma', spec: 'Dentist', rating: 4.8, exp: '7 yrs', fee: '₹300' },
     { id: 2, name: 'Dr. Rahul Verma', spec: 'Cardiologist', rating: 4.9, exp: '12 yrs', fee: '₹800' },
-    { id: 3, name: 'Dr. Priya Singh', spec: 'General', rating: 4.5, exp: '5 yrs', fee: '₹200' },
+    { id: 3, name: 'Dr. Priya Singh', spec: 'General Physician', rating: 4.5, exp: '5 yrs', fee: '₹200' },
+    { id: 4, name: 'Dr. Amit Patel', spec: 'Gastroenterologist', rating: 4.7, exp: '8 yrs', fee: '₹600' },
+    { id: 5, name: 'Dr. Neaha Gupta', spec: 'Dermatologist', rating: 4.6, exp: '6 yrs', fee: '₹500' },
 ];
 
 export default function HomeScreen({ navigation }) {
     const [searchText, setSearchText] = useState('');
+    const [aiResult, setAiResult] = useState(null);
+    const [filteredDoctors, setFilteredDoctors] = useState(DOCTORS);
+
+    // AI SEARCH HANDLER
+    const handleSearch = (text) => {
+        setSearchText(text);
+
+        // 1. If text is empty, reset everything
+        if (text.length === 0) {
+            setAiResult(null);
+            setFilteredDoctors(DOCTORS);
+            return;
+        }
+
+        // 2. Run AI Logic (Symptom Matcher)
+        const result = findSpecialist(text);
+
+        if (result.match) {
+            setAiResult(result);
+            // 3. Filter Doctors based on AI prediction
+            const relevantDoctors = DOCTORS.filter(doc => doc.spec === result.specialist);
+            setFilteredDoctors(relevantDoctors);
+        } else {
+            setAiResult(null);
+            // If no AI match, maybe filter by name (keyword search) fallback
+            const keywordMatches = DOCTORS.filter(doc =>
+                doc.name.toLowerCase().includes(text.toLowerCase()) ||
+                doc.spec.toLowerCase().includes(text.toLowerCase())
+            );
+            setFilteredDoctors(keywordMatches);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -46,12 +82,30 @@ export default function HomeScreen({ navigation }) {
                         <Search size={20} color="#999" />
                         <TextInput
                             style={styles.input}
-                            placeholder="Search 'Stomach pain', 'Fever'..."
+                            placeholder="Type 'Stomach pain', 'Fever'..."
                             value={searchText}
-                            onChangeText={setSearchText}
+                            onChangeText={handleSearch}
                         />
                     </View>
                 </View>
+
+                {/* AI RESULT CARD (Appears when match found) */}
+                {aiResult && (
+                    <View style={styles.aiResultCard}>
+                        <View style={styles.aiHeader}>
+                            <View style={styles.aiIconContainer}>
+                                <Text style={{ fontSize: 24 }}>{aiResult.icon}</Text>
+                            </View>
+                            <View>
+                                <Text style={styles.aiLabel}>AI Suggestion</Text>
+                                <Text style={styles.aiSpecialist}>{aiResult.specialist}</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.aiConfidence}>
+                            Match Confidence: {Math.round(aiResult.confidence * 100)}%
+                        </Text>
+                    </View>
+                )}
 
                 {/* Categories */}
                 <View style={styles.section}>
@@ -69,28 +123,38 @@ export default function HomeScreen({ navigation }) {
                 {/* Top Doctors */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Top Doctors Nearby</Text>
+                        <Text style={styles.sectionTitle}>
+                            {aiResult ? `Recommended for You` : `Top Doctors Nearby`}
+                        </Text>
                         <TouchableOpacity>
                             <Text style={styles.seeAll}>See All</Text>
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorList}>
-                        {DOCTORS.map((doc) => (
-                            <TouchableOpacity key={doc.id} style={styles.doctorCard}>
-                                <View style={styles.doctorImagePlaceholder} />
-                                <View style={styles.doctorInfo}>
-                                    <Text style={styles.doctorName}>{doc.name}</Text>
-                                    <Text style={styles.doctorSpec}>{doc.spec}</Text>
-                                    <View style={styles.ratingContainer}>
-                                        <Star size={12} color="#FFD700" fill="#FFD700" />
-                                        <Text style={styles.rating}>{doc.rating}</Text>
-                                        <Text style={styles.reviews}>• {doc.exp} exp</Text>
+                        {filteredDoctors.length > 0 ? (
+                            filteredDoctors.map((doc) => (
+                                <TouchableOpacity
+                                    key={doc.id}
+                                    style={styles.doctorCard}
+                                    onPress={() => navigation.navigate('DoctorProfile', { doctor: doc })}
+                                >
+                                    <View style={styles.doctorImagePlaceholder} />
+                                    <View style={styles.doctorInfo}>
+                                        <Text style={styles.doctorName}>{doc.name}</Text>
+                                        <Text style={styles.doctorSpec}>{doc.spec}</Text>
+                                        <View style={styles.ratingContainer}>
+                                            <Star size={12} color="#FFD700" fill="#FFD700" />
+                                            <Text style={styles.rating}>{doc.rating}</Text>
+                                            <Text style={styles.reviews}>• {doc.exp} exp</Text>
+                                        </View>
+                                        <Text style={styles.fee}>{doc.fee}</Text>
                                     </View>
-                                    <Text style={styles.fee}>{doc.fee}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
+                                </TouchableOpacity>
+                            ))
+                        ) : (
+                            <Text style={styles.noResult}>No doctors found for this issue.</Text>
+                        )}
                     </ScrollView>
                 </View>
             </ScrollView>
@@ -173,6 +237,47 @@ const styles = StyleSheet.create({
         marginLeft: 12,
         fontSize: 16,
     },
+
+    // AI CARD STYLES
+    aiResultCard: {
+        backgroundColor: '#E3F2FD',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#90CAF9',
+    },
+    aiHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    aiIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    aiLabel: {
+        fontSize: 12,
+        color: '#1565C0',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+    },
+    aiSpecialist: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#0D47A1',
+    },
+    aiConfidence: {
+        fontSize: 12,
+        color: '#546E7A',
+        marginTop: 4,
+    },
+
     section: {
         marginBottom: 24,
     },
@@ -273,4 +378,10 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#007AFF',
     },
+    noResult: {
+        fontSize: 14,
+        color: '#999',
+        fontStyle: 'italic',
+        padding: 16,
+    }
 });
